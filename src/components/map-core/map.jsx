@@ -1,39 +1,83 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { loadModules } from "esri-loader";
-const [Map, MapView, GeoJSONLayer] = await loadModules(
-  ["esri/Map", "esri/views/MapView", "esri/layers/GeoJSONLayer"],
-  { css: true }
-);
 
 const MapComponent = ({ containerRef }) => {
-  if (!containerRef) {
-    return;
-  }
-
   useEffect(() => {
+    if (!containerRef.current) return;
     let view;
-    // debugger
-    const map = new Map({
-      //   basemap: 'streets-navigation-vector'
-      basemap: "gray-vector",
-    //   layer: [geojsonLayer],
+
+    loadModules(
+      ["esri/Map", "esri/views/MapView", "esri/layers/WebTileLayer", "esri/layers/WMSLayer"],
+      { css: true }
+    ).then(([Map, MapView, WebTileLayer, WMSLayer]) => {
+      const googleLayer = new WebTileLayer({
+        urlTemplate:
+          "https://mts1.google.com/vt/lyrs=m@186112443&hl=x-local&src=app&x={col}&y={row}&z={level}&m=Galile"
+      });
+
+      const map = new Map({
+        basemap: { baseLayers: [googleLayer] }
+      });
+
+      // Railway Network Layer (Track)
+      const trackLayer = new WMSLayer({
+        url: "https://www.aajkabharatweb.com/geoserver/Telecom/wms?",
+        sublayers: [
+          {
+            name: "Telecom:Railway_Network",
+            title: "Rail Track"
+          }
+        ],
+        visible: true
+      });
+      map.add(trackLayer);
+
+      // Yard Layer
+      const yardLayer = new WMSLayer({
+        url: "https://mlinfomap.org/geoserver/railway/wms",
+        sublayers: [
+          {
+            name: "railway:Yard_Zone",
+            title: "Yard Layer"
+          }
+        ],
+        visible: false // start hidden
+      });
+      map.add(yardLayer);
+
+      // Create map view
+      view = new MapView({
+        container: containerRef.current,
+        map,
+        center: [78.96, 22],
+        zoom: 5,
+        constraints: { minZoom: 3, maxZoom: 18 }
+      });
+      containerRef.current.__arcgisView = view;
+      // Checkboxes UI
+      const checkboxDiv = document.createElement("div");
+      checkboxDiv.innerHTML = `
+        <div style="background:#fff; padding:6px 10px; border-radius:6px; font-size:13px;">
+          <label style="display:block; margin-bottom:4px;">
+            <input type="checkbox" id="trackCheckbox" checked> Rail Track
+          </label>
+          <label>
+            <input type="checkbox" id="yardCheckbox"> Yard Layer
+          </label>
+        </div>
+      `;
+      view.ui.add(checkboxDiv, "top-right");
+
+      // Toggle logic
+      checkboxDiv.querySelector("#trackCheckbox").addEventListener("change", (e) => {
+        trackLayer.visible = e.target.checked;
+      });
+
+      checkboxDiv.querySelector("#yardCheckbox").addEventListener("change", (e) => {
+        yardLayer.visible = e.target.checked;
+      });
     });
 
-    view = new MapView({
-      container: containerRef.current,
-      map: map,
-      center: [78.96, 22], // India center
-      zoom:3,
-      constraints: {
-        minZoom: 3, //  Prevent zooming out beyond level 4
-        maxZoom: 18 // optional: prevent zooming in too much
-      }
-    });
-    // const geojsonLayer = new GeoJSONLayer({
-    //     id:'districtLayer',
-    //   url : 'https://mlinfomap.org/geoserver/India_District/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=India_District%3Adistrict_boundary&outputFormat=application%2Fjson&maxFeatures=1000',
-    // });
-    // map.add(geojsonLayer)
     return () => {
       if (view) {
         view.destroy();
@@ -41,6 +85,7 @@ const MapComponent = ({ containerRef }) => {
     };
   }, [containerRef]);
 
+  return null;
 };
 
 export default MapComponent;
