@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { loadModules } from "esri-loader";
-
 const MapComponent = ({ containerRef }) => {
   useEffect(() => {
     if (!containerRef.current) return;
@@ -61,12 +60,12 @@ const MapComponent = ({ containerRef }) => {
           <label style="display:block; margin-bottom:4px;">
             <input type="checkbox" id="trackCheckbox" checked> Rail Track
           </label>
-          <label>
-            <input type="checkbox" id="yardCheckbox"> Yard Layer
-          </label>
-        </div>
-      `;
+          </div>
+          `;
       view.ui.add(checkboxDiv, "top-right");
+          // <label>
+          //   <input type="checkbox" id="yardCheckbox"> Yard Layer
+          // </label> 
 
       // Toggle logic
       checkboxDiv.querySelector("#trackCheckbox").addEventListener("change", (e) => {
