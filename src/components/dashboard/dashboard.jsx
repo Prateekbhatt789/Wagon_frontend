@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -14,8 +14,11 @@ import PauseIcon from "@mui/icons-material/Pause";
 import FastForwardIcon from "@mui/icons-material/FastForward";
 import SlowMotionVideoIcon from "@mui/icons-material/SlowMotionVideo";
 import ClearIcon from "@mui/icons-material/Clear";
+import SpeedometerComponent from "../map-core/speedometer";
+import { SpeedContext } from "../context/speedContext";
 
 const Dashboard = () => {
+    const {vehicleSpeed} = useContext(SpeedContext)
     const [startDate, setStartDate] = useState(dayjs("2023-06-01"));
     const [endDate, setEndDate] = useState(dayjs("2023-06-30"));
     const [device, setDevice] = useState("");
@@ -311,7 +314,11 @@ const Dashboard = () => {
             {/* Main Layout */}
             <div className="flex flex-1 px-0 pb-0">
                 <div className="flex-1 border-2 border-black rounded-md">
-                    <div ref={mapRef} className="h-full w-full"></div>
+                    <div ref={mapRef} className="h-full w-full" style={{position:"relative"}}>
+                        <div className="speedometer_comp_div" style={{position:"absolute", top:"100px", right:"20px", background:"white", padding:"2px 5px"}}>
+                            <SpeedometerComponent  />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

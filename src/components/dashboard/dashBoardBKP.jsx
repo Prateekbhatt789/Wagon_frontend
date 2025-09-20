@@ -1,28 +1,24 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import {
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Button,
-} from "@mui/material";
-import Navbar from '../navbar'
+import { FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
+import Navbar from "../navbar";
 import MapComponent from "../map-core/map";
 import TrackingMap from "../map-core/trackingMap";
 
-//  Import MUI Icons
+// Import MUI Icons
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import FastForwardIcon from "@mui/icons-material/FastForward";
 import SlowMotionVideoIcon from "@mui/icons-material/SlowMotionVideo";
 import ClearIcon from "@mui/icons-material/Clear";
+import SpeedometerComponent from "../map-core/speedometer";
+import { SpeedContext } from "../context/speedContext";
 
 const Dashboard = () => {
-    
+    const {vehicleSpeed} = useContext(SpeedContext)
     const [startDate, setStartDate] = useState(dayjs("2023-06-01"));
     const [endDate, setEndDate] = useState(dayjs("2023-06-30"));
     const [device, setDevice] = useState("");
@@ -31,35 +27,42 @@ const Dashboard = () => {
     const [stopSignal, setStopSignal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSpeed, setCurrentSpeed] = useState(1);
-    const mapRef = useRef(null);
+    const [activeAction, setActiveAction] = useState(""); // "play", "pause", "fast", "slow", ""
 
-    useEffect(() => {
-        fetchDeviceId();
-    }, [endDate]);
+    const mapRef = useRef(null);
+    const trackingMapRef = useRef(null); // Add ref for TrackingMap
+
+
+    const apiBaseUrl = import.meta.env.VITE_APIBASE_URL;
+
 
     const fetchDeviceId = () => {
-        fetch("http://192.168.1.30:8000/getDeviceId", {
+        console.log(fetchDeviceId)
+        fetch(`${apiBaseUrl}/getDeviceId`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                fromDate: startDate,   // make sure these are formatted strings
+                fromDate: startDate,
                 toDate: endDate,
+
             }),
+
+
         })
             .then(async (res) => {
-                const data = await res.json()
-                console.log(data)
-                setDeviceList(data.device_ids || [])
+                const data = await res.json();
+                setDeviceList(data.device_ids || []);
             })
             .catch((err) => console.error("API error:", err));
-    }
+    };
+
     const fetchTrackPoints = async () => {
         try {
-            const res = await fetch("http://192.168.1.30:8000/getTrackPoints", {
+            const res = await fetch(`${apiBaseUrl}/getTrackPoints`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    fromDate: startDate,   // make sure these are formatted strings
+                    fromDate: startDate,
                     toDate: endDate,
                     device_id: device,
                 }),
@@ -67,11 +70,14 @@ const Dashboard = () => {
             const data = await res.json();
             return data;
         } catch (error) {
-            console.error("Trackpoint API error:", err);
+            console.error("Trackpoint API error:", error);
             return [];
         }
-    }
+    };
 
+    useEffect(() => {
+        fetchDeviceId();
+    }, [endDate]);
     function formatDateToTimestamp(date) {
         const d = new Date(date); // ensure it's a Date object
 
@@ -96,51 +102,57 @@ const Dashboard = () => {
 
 
     }
-
     const play = async () => {
-        if (trackPoints.length === 0){
+        if (trackPoints.length === 0) {
             const points = await fetchTrackPoints();
             setTrackPoints(points);
             setCurrentIndex(0);
-            console.log("Play button clicked and Points received:",points,currentIndex)
         }
         setStopSignal(false);
         setCurrentSpeed(1);
     };
 
     const pause = () => {
-        console.log(" Paused",stopSignal);
         setStopSignal(true);
     };
 
     const slow = () => {
-        console.log(" Slow");
-        // TODO: adjust speed (increase interval duration)
         setCurrentSpeed(2);
     };
 
     const fast = () => {
-        console.log(" Fast");
-        // TODO: adjust speed (decrease interval duration)
-        setCurrentSpeed(0.5);
+        setCurrentSpeed(prev => Math.max(prev / 2, 0.125)); // doubles speed each click
+    };
+    const clear = () => {
+        setTrackPoints([]);
+        setCurrentIndex(0);
+        setStopSignal(true);
+        if (trackingMapRef.current) {
+            trackingMapRef.current.clear();
+        }
     };
 
-    const clear = () => {
-        console.log(" Clear map");
-        setTrackPoints([]);
-    };
-    const actionMap = { play, pause, slow, fast, clear, };
-    // Button click handler
+    const actionMap = { play, pause, slow, fast, clear };
+
     const handleButtonClick = async (action) => {
         if (!device) {
             alert("Please select a device first!");
             return;
         }
         console.log(`Button ${action} clicked for device: ${device}`);
-        //  Call your API / function here based on action + device
         const fn = actionMap[action];
         if (fn) fn();
+        setActiveAction(action);
+    };
 
+    const handleDeviceChange = (e) => {
+        setDevice(e.target.value);
+        setTrackPoints([]);
+        setCurrentIndex(0);
+        setStopSignal(true);
+        if (trackingMapRef.current) {
+            trackingMapRef.current.clear();
+        }
     };
 
     // Define button actions with icons
@@ -152,24 +164,23 @@ const Dashboard = () => {
         { id: "clear", label: "Clear", icon: <ClearIcon /> },
     ];
 
-
     return (
         <div className="h-dvh w-dvw flex flex-col gap-0">
             {/* Header */}
-            <div className="h-[45px] px-10 flex items-centerborder-5 border-red-500">
+            <div className="h-[45px] px-10 flex items-center border-5 border-red-500">
                 <Navbar />
             </div>
 
             {/* Search Section */}
-            <div className="flex items-center  gap-4 bg-[#e5e5e5] mt-5 px-6 py-6 rounded-2lg font-bold">
+            <div className="flex items-center gap-4 bg-[#e5e5e5] mt-5 px-6 py-6 rounded-2lg font-bold">
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <div className="flex gap-4" style={{ marginTop: '5px', alignItems: 'center' }}>
+                    <div className="flex gap-4" style={{ marginTop: "5px", alignItems: "center" }}>
                         <DateTimePicker
                             label="Start Date & Time"
-                            value={startDate ? dayjs(startDate) : null} // ✅ convert string to Day.js
+                            value={startDate ? dayjs(startDate) : null}
                             onChange={(newVal) => {
                                 if (!newVal) return;
-                                setStartDate(newVal.format("YYYY-MM-DD HH:mm:ss.SSS")); // store formatted string
+                                setStartDate(formatDateToTimestamp(newVal));
                             }}
                             ampm={false}
                             timeSteps={{ hours: 1, minutes: 1, seconds: 1 }}
@@ -180,17 +191,16 @@ const Dashboard = () => {
                                     InputLabelProps: { shrink: true },
                                     sx: {
                                         height: 40,
-                                        '& .MuiInputBase-root': { height: 40, padding: '0 14px' },
-                                        label: { color: 'black', fontWeight: 'bold' },
+                                        "& .MuiInputBase-root": { height: 40, padding: "0 14px" },
+                                        label: { color: "black", fontWeight: "bold" },
                                     },
                                 },
                             }}
                         />
                         <DateTimePicker
                             label="End Date & Time"
-                            value={endDate ? dayjs(endDate) : null} // ✅ convert string to Day.js
-                            onChange={(newVal) =>
-                                handleEndDateChange(newVal)}
+                            value={endDate ? dayjs(endDate) : null}
+                            onChange={handleEndDateChange}
                             ampm={false}
                             timeSteps={{ hours: 1, minutes: 1, seconds: 1 }}
                             slotProps={{
@@ -200,8 +210,8 @@ const Dashboard = () => {
                                     InputLabelProps: { shrink: true },
                                     sx: {
                                         height: 40,
-                                        '& .MuiInputBase-root': { height: 40, padding: '0 14px' },
-                                        label: { color: 'black', fontWeight: 'bold' },
+                                        "& .MuiInputBase-root": { height: 40, padding: "0 14px" },
+                                        label: { color: "black", fontWeight: "bold" },
                                     },
                                 },
                             }}
@@ -211,24 +221,43 @@ const Dashboard = () => {
 
                 {/* Device Select */}
                 <div>
-                    <FormControl size="small" sx={{ minWidth: 150, height: 40, marginTop: '5px' }}>
-                        <InputLabel id="device-select-label" shrink sx={{ color: 'black', fontWeight: 'bold' }}>
+                    <FormControl
+                        size="small"
+                        sx={{ minWidth: 215, height: 40, marginTop: "5px" }}
+                    >
+                        <InputLabel
+                            id="device-select-label"
+                        // shrink
+                        // sx={{
+                        //     color: "black",
+                        //     fontWeight: "bold",
+                        //     top: -7,
+                        //     transform: "translate(14px, 7px) scale(0.85)",
+                        // }}
+                        >
                             Select Device
                         </InputLabel>
+
                         <Select
                             labelId="device-select-label"
+                            id="device-select"
                             value={device}
-                            onChange={(e) => {setDevice(e.target.value) 
-                                setTrackPoints([]);}}
+                            label="Select Device"
+                            onChange={handleDeviceChange}
                             sx={{
                                 height: 40,
-                                '& .MuiSelect-select': { display: 'flex', alignItems: 'center', height: 40, padding: '0 14px' },
+                                "& .MuiSelect-select": {
+                                    display: "flex",
+                                    alignItems: "center",
+                                    height: 40,
+                                    padding: "0 14px",
+                                },
                             }}
                             MenuProps={{
                                 PaperProps: {
                                     style: {
-                                        maxHeight: 200, // dropdown max height
-                                        overflowY: 'auto', // enable scroll
+                                        maxHeight: 200,
+                                        overflowY: "auto",
                                     },
                                 },
                             }}
@@ -242,51 +271,58 @@ const Dashboard = () => {
 
                     </FormControl>
 
+                    {/* Render MapComponent only once */}
                     <MapComponent containerRef={mapRef} />
 
                     {/* Train animation only if we have data */}
                     {trackPoints.length > 0 && (
-                        <TrackingMap 
-                            containerRef={mapRef} 
-                            trackPoints={trackPoints} 
-                            stopSignal= {stopSignal}
-                            currentIndex = { currentIndex } 
-                            setCurrentIndex = { setCurrentIndex }   
-                            currentSpeed = { currentSpeed }
+                        <TrackingMap
+                            ref={trackingMapRef}
+                            containerRef={mapRef}
+                            trackPoints={trackPoints}
+                            stopSignal={stopSignal}
+                            currentIndex={currentIndex}
+                            setCurrentIndex={setCurrentIndex}
+                            currentSpeed={currentSpeed}
                         />
                     )}
                 </div>
+
                 {/* Action Buttons */}
                 <div className="flex gap-2 ml-auto items-center">
                     {actions.map((action) => (
                         <Button
                             key={action.id}
-                            variant="contained"
+                            variant={activeAction === action.id ? "contained" : "outlined"} // contained = active
                             size="small"
                             startIcon={action.icon}
                             onClick={() => handleButtonClick(action.id)}
                             sx={{
                                 minHeight: 39,
-                                backgroundColor: "#4a69bd",
+                                backgroundColor: activeAction === action.id ? "#182C61" : "#4a69bd",
                                 "&:hover": { backgroundColor: "#182C61" },
+                                color: "#fff",
                             }}
                         >
                             {action.label}
                         </Button>
                     ))}
+
                 </div>
             </div>
 
             {/* Main Layout */}
             <div className="flex flex-1 px-0 pb-0">
                 <div className="flex-1 border-2 border-black rounded-md">
-                    <div ref={mapRef} className="h-full w-full">
-                        <MapComponent containerRef={mapRef} />
+                    <div ref={mapRef} className="h-full w-full" style={{position:"relative"}}>
+                        <div className="speedometer_comp_div" style={{position:"absolute", top:"100px", right:"20px", background:"white", padding:"2px 5px"}}>
+                            <SpeedometerComponent  />
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
+};
 
 export default Dashboard;
