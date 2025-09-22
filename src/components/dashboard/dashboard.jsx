@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -7,6 +7,14 @@ import { FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material
 import Navbar from "../navbar";
 import MapComponent from "../map-core/map";
 import TrackingMap from "../map-core/trackingMap";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
+import { createTheme } from "@mui/material/styles";
+boxShadow: createTheme().shadows[3]
+
+
+const theme = createTheme(); // OK at top-level
+
 
 // Import MUI Icons
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -14,8 +22,11 @@ import PauseIcon from "@mui/icons-material/Pause";
 import FastForwardIcon from "@mui/icons-material/FastForward";
 import SlowMotionVideoIcon from "@mui/icons-material/SlowMotionVideo";
 import ClearIcon from "@mui/icons-material/Clear";
+import SpeedometerComponent from "../map-core/speedometer";
+import { SpeedContext } from "../context/speedContext";
 
 const Dashboard = () => {
+    const { vehicleSpeed, animationSpeed } = useContext(SpeedContext)
     const [startDate, setStartDate] = useState(dayjs("2023-06-01"));
     const [endDate, setEndDate] = useState(dayjs("2023-06-30"));
     const [device, setDevice] = useState("");
@@ -28,13 +39,12 @@ const Dashboard = () => {
 
     const mapRef = useRef(null);
     const trackingMapRef = useRef(null); // Add ref for TrackingMap
-
+    const animationSpeedDashboard = Math.max(animationSpeed * 1000, 500) + 200;
 
     const apiBaseUrl = import.meta.env.VITE_APIBASE_URL;
 
 
     const fetchDeviceId = () => {
-        console.log(fetchDeviceId)
         fetch(`${apiBaseUrl}/getDeviceId`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -64,6 +74,7 @@ const Dashboard = () => {
                     device_id: device,
                 }),
             });
+
             const data = await res.json();
             return data;
         } catch (error) {
@@ -72,9 +83,40 @@ const Dashboard = () => {
         }
     };
 
+    const fetchHaltedTrackPoints = async () => {
+        try {
+            const res = await fetch(`${apiBaseUrl}/getHaltedTrackPoints`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    fromDate: startDate,
+                    toDate: endDate,
+                    device_id: device,
+                }),
+            });
+
+            const data = await res.json();
+            return data;
+
+
+
+        } catch (error) {
+            toast.error("Failed to fetch halted track points.");
+        }
+    };
+
+
+
+
     useEffect(() => {
         fetchDeviceId();
     }, [endDate]);
+    useEffect(() => {
+        if (device && startDate && endDate) {
+            fetchHaltedTrackPoints();
+        }
+    }, [device, startDate, endDate]);
+
     function formatDateToTimestamp(date) {
         const d = new Date(date); // ensure it's a Date object
 
@@ -92,16 +134,10 @@ const Dashboard = () => {
 
         const formatted = formatDateToTimestamp(newValue.$d); // Day.js native Date
         setEndDate(formatted); // keep state as Day.js object
-
-        console.log("Start date inside handleEndDateChange:", startDate.$d)
-        console.log("End date inside handleEndDateChange:", endDate.$d)
-        console.log("Device list inside handleEndDateChange:", deviceList.$d)
-
-
     }
     const play = async () => {
         if (trackPoints.length === 0) {
-            const points = await fetchTrackPoints();
+            const points = await fetchHaltedTrackPoints();
             setTrackPoints(points);
             setCurrentIndex(0);
         }
@@ -162,6 +198,7 @@ const Dashboard = () => {
     ];
 
     return (
+
         <div className="h-dvh w-dvw flex flex-col gap-0">
             {/* Header */}
             <div className="h-[45px] px-10 flex items-center border-5 border-red-500">
@@ -311,7 +348,45 @@ const Dashboard = () => {
             {/* Main Layout */}
             <div className="flex flex-1 px-0 pb-0">
                 <div className="flex-1 border-2 border-black rounded-md">
-                    <div ref={mapRef} className="h-full w-full"></div>
+                    <div ref={mapRef} className="h-full w-full" style={{ position: "relative" }}>
+                        <div
+                            className="speedometer_comp_div"
+                            style={{
+                                position: "absolute",
+                                top: "62px",
+                                right: "15px",
+                                background: "linear-gradient(f1f1f1, #ffffff, #f1f1f1)", // subtle gradient
+                                padding: "10px 15px",
+                                borderRadius: "20px", // smooth corners
+                                boxShadow: `${theme.shadows[4]}, 0  15px rgba(0, 0, 0, 0.1)`, // strong 3D effect + glow
+                                border: "2px solid #d1d1d1", // subtle border for depth
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            }}
+
+                        >
+                            <SpeedometerComponent />
+                        </div>
+                        <div>
+                            {/* Your existing component JSX */}
+
+                            {/* Toast container */}
+
+                            <ToastContainer
+                                position="top-center"
+                                autoClose={animationSpeedDashboard}
+                                hideProgressBar={true}
+                                closeButton={false}
+                                toastClassName="bg-white text-black rounded-lg p-3 font-bold"
+                                style={{ marginTop: "250px", boxShadow: createTheme().shadows[3] }}
+                            />
+
+
+
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
