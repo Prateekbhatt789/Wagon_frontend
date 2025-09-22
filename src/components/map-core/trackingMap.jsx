@@ -1,18 +1,25 @@
-import React, { useEffect, useRef, forwardRef, useImperativeHandle,useContext } from "react";
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useContext, useState } from "react";
 import { loadModules } from "esri-loader";
 import trainIcon from "../../assets/train.png";
 import { makeLabelPicture } from './utils'
 import { SpeedContext } from "../context/speedContext";
+import { ToastContainer, toast } from 'react-toastify';
 
 const TrackingMap = forwardRef(
     ({ containerRef, trackPoints, stopSignal, currentIndex, setCurrentIndex, currentSpeed }, ref) => {
-        const { setVehicleSpeed } = useContext(SpeedContext);
-   
+        const { setVehicleSpeed, setAnimationSpeed } = useContext(SpeedContext);
+        const HALT_TOAST_ID = "halt-toast";
+        const [isHalted, setIsHalted] = useState();
         const stopRef = useRef(stopSignal);
         const currentLayerRef = useRef(null);
         const historyLayerRef = useRef(null);
         const intervalIdRef = useRef(null);
 
+
+        // useEffect(() => {
+        //     debugger;
+        //     toast.info("Vehicle halted!!")
+        // }, [isHalted])
         // Keep stopSignal updated
         useEffect(() => {
             stopRef.current = stopSignal;
@@ -90,10 +97,30 @@ const TrackingMap = forwardRef(
                             return;
                         }
 
-                        const { lon, lat, dateTime,speed } = trackPoints[index];
-                        console.log("speed received",speed)
+                        const { lon, lat, dateTime, speed, longer_halt } = trackPoints[index];
+                        // console.log("tracking map is_halt:", longer_halt)
+                        console.log("tracking map animation speed:", currentSpeed)
+                        const animationSpeedTrackingMap = Math.max(currentSpeed * 1000, 500) + 200;
+                        // setIsHalted(longer_halt);
+                        if (longer_halt === "1") {
+                            if (!toast.isActive(HALT_TOAST_ID)) {
+                                // create new toast if not active
+                                toast.info("Vehicle halted!!", {
+                                    toastId: HALT_TOAST_ID,
+                                    autoClose: animationSpeedTrackingMap, // default life (5s)
+                                });
+                            } else {
+                                // update the existing toast and extend its life
+                                toast.update(HALT_TOAST_ID, {
+                                    render: "Vehicle halted!!",
+                                    closeOnClick: false,
+                                    closeButton: false,
+                                    autoClose: animationSpeedTrackingMap, // reset life
+                                });
+                            }
+                        }
+                        setAnimationSpeed(currentSpeed)
                         setVehicleSpeed(speed)
-                        console.log("after setVehiclespeed")
                         if (!lon || !lat) {
                             console.warn(`Invalid track point at index ${index}:`, trackPoints[index]);
                             index++;

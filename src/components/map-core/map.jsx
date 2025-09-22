@@ -1,9 +1,9 @@
-import React, { useEffect ,useRef, useContext} from "react";
+import React, { useEffect, useRef, useContext } from "react";
 import { loadModules } from "esri-loader";
 import { createRoot } from "react-dom/client";
 import SpeedometerComponent from "./speedometer";
 const MapComponent = ({ containerRef }) => {
- 
+
   const speedometerContainerRef = useRef(null);
   useEffect(() => {
     if (!containerRef.current) return;
@@ -67,22 +67,23 @@ const MapComponent = ({ containerRef }) => {
           <label style="display:block; margin-bottom:4px;">
             <input type="checkbox" id="trackCheckbox" checked> Rail Track
           </label>
-          <label>
-            <input type="checkbox" id="yardCheckbox"> Rail Yard
-          </label>
+        
         </div>
       `;
+      // <label>
+      //   <input type="checkbox" id="yardCheckbox"> Rail Yard
+      // </label>
       view.ui.add(checkboxDiv, "top-right");
-      
+
       // Toggle logic
       checkboxDiv.querySelector("#trackCheckbox").addEventListener("change", (e) => {
         trackLayer.visible = e.target.checked;
       });
 
-      checkboxDiv.querySelector("#yardCheckbox").addEventListener("change", (e) => {
-        yardLayer.visible = e.target.checked;
-      });
-     
+      // checkboxDiv.querySelector("#yardCheckbox").addEventListener("change", (e) => {
+      //   yardLayer.visible = e.target.checked;
+      // });
+
     });
 
     return () => {
