@@ -1,0 +1,14 @@
+@media (min-width: 660px) and (max-width: 1250px) {
+    .navbar1 {
+      
+        flex-direction: column;
+
+    }
+        .navbar2{
+            margin-left: 10px;
+            justify-content: center;
+        }
+.spedo{
+    
+}
+}
