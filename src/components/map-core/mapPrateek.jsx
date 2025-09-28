@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useContext } from "react";
+import React, { useEffect, useRef } from "react";
 import { loadModules } from "esri-loader";
-import { createRoot } from "react-dom/client";
 import SpeedometerComponent from "./speedometer";
-const MapComponent = ({ containerRef }) => {
 
+const MapComponent = ({ containerRef }) => {
   const speedometerContainerRef = useRef(null);
   const apiBaseUrl = import.meta.env.VITE_APIBASE_URL;
   const getYardGeoJson = async () => {
@@ -29,11 +28,10 @@ const MapComponent = ({ containerRef }) => {
     const yardLayer = new GeoJSONLayer({
       url,
       title: "Yard Layer",
-      outFields: ["*"],  // <-- make sure all properties are available
       popupTemplate: {
-        title: "{asset_name}",
-        content: (event) => {
-          const props = event.graphic.attributes;  // note: use event
+        title: "{asset_name}", // must match the GeoJSON property
+        content: (feature) => {
+          const props = feature.graphic.attributes;
           return `
         <b>Category:</b> ${props.asset_cate || "N/A"} <br/>
         <b>Type:</b> ${props.asset_type || "N/A"} <br/>
@@ -70,12 +68,7 @@ const MapComponent = ({ containerRef }) => {
       // Railway Network Layer (Track)
       const trackLayer = new WMSLayer({
         url: "https://www.aajkabharatweb.com/geoserver/Telecom/wms?",
-        sublayers: [
-          {
-            name: "Telecom:Railway_Network",
-            title: "Rail Track"
-          }
-        ],
+        sublayers: [{ name: "Telecom:Railway_Network", title: "Rail Track" }],
         visible: true
       });
       map.add(trackLayer);
@@ -83,37 +76,29 @@ const MapComponent = ({ containerRef }) => {
       // Yard Layer
       const yardLayer = await loadYardLayer(map);
 
-
-
-
       // Create map view
       view = new MapView({
         container: containerRef.current,
         map,
-        center: [78.22610477, 27.22065370],
-        zoom: 7,
+        center: [78.96, 22],
+        zoom: 5,
         constraints: { minZoom: 3, maxZoom: 18 }
       });
       containerRef.current.__arcgisView = view;
+
       // Checkboxes UI
       const checkboxDiv = document.createElement("div");
       checkboxDiv.innerHTML = `
-        <div style="background:#fff;
-         padding:6px 10px; 
-         border-radius:6px; 
-         font-size:13px;">
+        <div style="background:#fff; padding:6px 10px; border-radius:6px; font-size:13px;">
           <label style="display:block; margin-bottom:4px;">
             <input type="checkbox" id="trackCheckbox" checked> Rail Track
           </label>
-         <label style="display:block; margin-bottom:4px;">
+          <label style="display:block; margin-bottom:4px;">
             <input type="checkbox" id="yardCheckbox" checked> Rail Yard
           </label>
         </div>
       `;
-      // <label>
-      //   <input type="checkbox" id="yardCheckbox"> Rail Yard
-      // </label>
-      view.ui.add(checkboxDiv, "bottom-right");
+      view.ui.add(checkboxDiv, "top-right");
 
       // Toggle logic
       checkboxDiv.querySelector("#trackCheckbox").addEventListener("change", (e) => {
@@ -122,14 +107,10 @@ const MapComponent = ({ containerRef }) => {
       checkboxDiv.querySelector("#yardCheckbox").addEventListener("change", (e) => {
         if (yardLayer) yardLayer.visible = e.target.checked;
       });
-
-
     });
 
     return () => {
-      if (view) {
-        view.destroy();
-      }
+      if (view) view.destroy();
     };
   }, [containerRef]);
 

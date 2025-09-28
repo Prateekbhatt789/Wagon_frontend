@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import wagonIcon from "../assets/wagonimage.png";
 
 function Navbar() {
   const [open, setOpen] = useState(false); // 
@@ -16,7 +17,7 @@ function Navbar() {
       <div className="flex items-center gap-4">
         {/* Logo */}
         <img
-          src="https://www.shutterstock.com/image-vector/trolley-coal-on-rails-solid-260nw-2636973107.jpg"
+          src={wagonIcon}
           alt="Wagon Railways Logo"
           className="h-12 w-12 object-contain"
         />
