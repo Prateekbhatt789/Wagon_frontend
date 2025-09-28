@@ -5,11 +5,9 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { FormControl, InputLabel, Select, MenuItem, Button } from "@mui/material";
 import Navbar from "../navbar";
-import './dashboard.css';
 import MapComponent from "../map-core/map";
 import TrackingMap from "../map-core/trackingMap";
 import { ToastContainer, toast } from "react-toastify";
-import TableComponent from '../Tablecomponent.jsx'
 import 'react-toastify/dist/ReactToastify.css';
 import { createTheme } from "@mui/material/styles";
 boxShadow: createTheme().shadows[3]
@@ -38,10 +36,6 @@ const Dashboard = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSpeed, setCurrentSpeed] = useState(1);
     const [activeAction, setActiveAction] = useState(""); // "play", "pause", "fast", "slow", ""
-    const [showTable, setShowTable] = useState(false);
-    const [showSpeedometer, setShowSpeedometer] = useState(false);
-
-
 
     const mapRef = useRef(null);
     const trackingMapRef = useRef(null); // Add ref for TrackingMap
@@ -88,7 +82,26 @@ const Dashboard = () => {
             return [];
         }
     };
-
+    const fetchTrackLines = async () =>{
+        try{
+            const res = await fetch(`${apiBaseUrl}/getTrackLines`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    // fromDate: startDate,
+                    // toDate: endDate,
+                    fromDate: "2023-06-01 00:00:00",
+                    toDate: "2023-06-30 00:00:00",
+                    device_id: device,
+                }),
+            });
+            console.log(`tracklines response: ${res}`)
+            console.log(`tracklines response: ${startDate},${endDate}`)
+        }catch (error) {
+            console.error("Trackpoint API error:", error);
+            return [];
+        }
+    }
     const fetchHaltedTrackPoints = async () => {
         try {
             const res = await fetch(`${apiBaseUrl}/getHaltedTrackPoints`, {
@@ -148,6 +161,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchDeviceId();
+        fetchTrackLines()
     }, [endDate]);
     useEffect(() => {
         if (device && startDate && endDate) {
