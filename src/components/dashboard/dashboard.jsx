@@ -36,6 +36,8 @@ const Dashboard = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSpeed, setCurrentSpeed] = useState(1);
     const [activeAction, setActiveAction] = useState(""); // "play", "pause", "fast", "slow", ""
+    const [showTable, setShowTable] = useState(false);
+    const [showSpeedometer, setShowSpeedometer] = useState(false);
 
     const mapRef = useRef(null);
     const trackingMapRef = useRef(null); // Add ref for TrackingMap
@@ -193,7 +195,7 @@ const Dashboard = () => {
             setTrackPoints(points);
             setCurrentIndex(0);
             setShowSpeedometer(true)
-        
+            
             
         }
         setStopSignal(false);
